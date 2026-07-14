@@ -1,5 +1,6 @@
 package com.hlysine.create_power_loader;
 
+import com.hlysine.create_power_loader.command.BypassCommand;
 import com.hlysine.create_power_loader.command.ListLoadersCommand;
 import com.hlysine.create_power_loader.command.SummaryCommand;
 import com.mojang.brigadier.CommandDispatcher;
@@ -17,7 +18,8 @@ public class CPLCommands {
         LiteralArgumentBuilder<CommandSourceStack> root = Commands.literal("powerloader")
                 .requires(cs -> cs.hasPermission(2))
                 .then(SummaryCommand.register())
-                .then(ListLoadersCommand.register());
+                .then(ListLoadersCommand.register())
+                .then(BypassCommand.register());
 
         LiteralCommandNode<CommandSourceStack> cplRoot = dispatcher.register(root);
 

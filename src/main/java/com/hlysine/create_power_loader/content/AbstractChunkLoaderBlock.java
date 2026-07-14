@@ -136,20 +136,24 @@ public abstract class AbstractChunkLoaderBlock extends DirectionalKineticBlock {
     @SuppressWarnings("deprecation")
     @Override
     public @NotNull InteractionResult useWithoutItem(@NotNull BlockState state, @NotNull Level level, @NotNull BlockPos pos, @NotNull Player player, @NotNull BlockHitResult hitResult) {
-        if (player.isShiftKeyDown()) {
-            BlockEntity be = level.getBlockEntity(pos);
-            if (be instanceof AbstractChunkLoaderBlockEntity chunkLoader) {
-                chunkLoader.toggleTickLoading();
-                if (!level.isClientSide()) {
-                    Component message = chunkLoader.tickLoadingEnabled
-                            ? Component.literal("Tick Loading: ON").withStyle(ChatFormatting.GREEN)
-                            : Component.literal("Tick Loading: OFF").withStyle(ChatFormatting.RED);
-                    player.displayClientMessage(message, true);
-                }
-                return InteractionResult.SUCCESS;
-            }
+        if (level.isClientSide()) return InteractionResult.SUCCESS;
+
+        BlockEntity be = level.getBlockEntity(pos);
+        if (!(be instanceof AbstractChunkLoaderBlockEntity chunkLoader)) return InteractionResult.PASS;
+
+        if (!(player instanceof net.minecraft.server.level.ServerPlayer sp)) return InteractionResult.PASS;
+
+        if (chunkLoader.getOwnerUUID() == null) {
+            // Unclaimed — prompt the player to claim it
+            player.sendSystemMessage(
+                    net.minecraft.network.chat.Component.literal("[PowerLoader] This loader has no owner. Right-click again to claim it, or the GUI will open if you have already claimed it.")
+                            .withStyle(ChatFormatting.YELLOW));
+            // Claim immediately on this click
+            chunkLoader.claimLoader(player);
+        } else {
+            chunkLoader.openOwnerScreenFor(sp);
         }
-        return InteractionResult.PASS;
+        return InteractionResult.SUCCESS;
     }
 
     @SuppressWarnings("deprecation")
