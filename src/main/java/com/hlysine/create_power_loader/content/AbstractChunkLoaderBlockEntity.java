@@ -341,6 +341,9 @@ public abstract class AbstractChunkLoaderBlockEntity extends KineticBlockEntity 
         // Unclaimed loaders never load chunks
         if (ownerUUID == null) return false;
         // Inactivity check
+        if (level != null && level.isClientSide()) {
+            return !suppressedByInactivity;
+        }
         MinecraftServer server = level != null ? level.getServer() : null;
         if (server != null) {
             return OwnershipHelper.hasActiveAuthorizedPlayer(ownerUUID, coOwners, server);

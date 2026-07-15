@@ -59,12 +59,13 @@ import java.util.UUID;
 public class ChunkLoaderOwnerScreen extends Screen {
 
     // --- Layout constants ---
-    private static final int PANEL_W = 270;
-    private static final int PANEL_H = 240;
-    private static final int SLOT_W = 48;
-    private static final int SLOT_H = 56;
-    private static final int SLOT_GAP = 6;
-    private static final int SLOTS_PER_ROW = 4;
+    private static final int PANEL_W = 340;
+    private static final int PANEL_H = 170;
+    private static final int SLOT_W_OWNER = 48;
+    private static final int SLOT_H_OWNER = 56;
+    private static final int SLOT_W_CO = 36;
+    private static final int SLOT_H_CO = 44;
+    private static final int SLOT_GAP = 4;
 
     // --- Colors ---
     private static final int COL_PANEL_BG     = 0xFF1A1A2E;
@@ -97,13 +98,10 @@ public class ChunkLoaderOwnerScreen extends Screen {
     private Button tickLoadingButton;
 
     // --- Interaction state ---
-    private int hoveredSlot = -1;   // -1 = none, 0 = owner, 1-7 = co-owners
     private int removeConfirmSlot = -1; // slot index awaiting removal confirmation
 
     // Computed layout (set in init)
     private int panelX, panelY;
-    private int ownerSlotX, ownerSlotY;
-    private int coOwnerRowX, coOwnerRow1Y, coOwnerRow2Y;
 
     public ChunkLoaderOwnerScreen(S2COwnerScreenPacket packet) {
         super(Component.literal("Chunk Loader Ownership"));
@@ -136,18 +134,8 @@ public class ChunkLoaderOwnerScreen extends Screen {
         panelX = (width - PANEL_W) / 2;
         panelY = (height - PANEL_H) / 2;
 
-        // Owner slot position
-        ownerSlotX = panelX + 10;
-        ownerSlotY = panelY + 50;
-
-        // Co-owner slots start (4 per row)
-        coOwnerRowX  = panelX + 10;
-        coOwnerRow1Y = panelY + 130;
-        coOwnerRow2Y = coOwnerRow1Y + SLOT_H + SLOT_GAP;
-
         // --- Username field ---
-        int fieldY = panelY + PANEL_H - 58;
-        usernameField = new EditBox(font, panelX + 80, fieldY, 110, 18,
+        usernameField = new EditBox(font, panelX + 12, panelY + 104, 100, 18,
                 Component.literal("Player name"));
         usernameField.setMaxLength(64);
         usernameField.setHint(Component.literal("username...").withStyle(ChatFormatting.DARK_GRAY));
@@ -155,16 +143,16 @@ public class ChunkLoaderOwnerScreen extends Screen {
 
         // --- Add button ---
         addButton = Button.builder(Component.literal("Add"), b -> sendAddCoOwner())
-                .pos(panelX + 196, fieldY - 1)
-                .size(44, 20)
+                .pos(panelX + 116, panelY + 103)
+                .size(36, 20)
                 .build();
         addRenderableWidget(addButton);
         addButton.active = viewerIsOwner;
 
         // --- Tick Loading toggle ---
         tickLoadingButton = Button.builder(tickLoadingLabel(), b -> sendToggleTickLoading())
-                .pos(panelX + 10, panelY + PANEL_H - 34)
-                .size(PANEL_W - 20, 20)
+                .pos(panelX + 12, panelY + 138)
+                .size(PANEL_W - 24, 20)
                 .build();
         addRenderableWidget(tickLoadingButton);
 
@@ -182,70 +170,75 @@ public class ChunkLoaderOwnerScreen extends Screen {
 
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        // Dim background
+        // 1. Draw the background (gradient/blur shader)
         renderBackground(g, mouseX, mouseY, partialTick);
 
-        // Panel
+        // 2. Draw our custom UI panel
         drawPanel(g);
 
-        // Title
+        // 3. Draw titles, labels, slot boxes, player heads, etc.
+        // Title & Suppression Warning next to it
         g.drawString(font, "Chunk Loader Ownership", panelX + 10, panelY + 8, COL_TEXT_PRIMARY, false);
-        g.drawString(font, blockPos.toShortString(), panelX + 10, panelY + 18, COL_TEXT_DIM, false);
-
-        // Suppression banner
         if (isSuppressed) {
-            g.fill(panelX + 10, panelY + 30, panelX + PANEL_W - 10, panelY + 43, COL_SUPPRESSED_BG);
-            g.drawCenteredString(font, "⚠  Loaders suppressed — owner inactive",
-                    panelX + PANEL_W / 2, panelY + 33, COL_TEXT_RED);
+            g.drawString(font, "⚠ Suppressed (Owner Inactive)", panelX + 160, panelY + 8, COL_TEXT_RED, false);
+        } else {
+            g.drawString(font, blockPos.toShortString(), panelX + 160, panelY + 8, COL_TEXT_DIM, false);
         }
 
         // Owner section
-        g.drawString(font, "Owner", panelX + 10, ownerSlotY - 12, COL_SECTION_LABEL, false);
+        g.drawString(font, "Owner", panelX + 12, panelY + 22, COL_SECTION_LABEL, false);
+        int ownerX = panelX + 12;
+        int ownerY = panelY + 32;
         if (ownerUUID != null) {
-            renderOwnerSlot(g, mouseX, mouseY, ownerSlotX, ownerSlotY,
-                    ownerUUID, ownerName, ownerLastSeenEpoch, true);
+            renderOwnerSlot(g, mouseX, mouseY, ownerX, ownerY, ownerUUID, ownerName, ownerLastSeenEpoch, true);
+            // Draw owner info next to the slot
+            g.drawString(font, ownerName, panelX + 66, panelY + 36, 0xFFFFD700, false);
+            g.drawString(font, "Last seen:", panelX + 66, panelY + 48, COL_TEXT_DIM, false);
+            g.drawString(font, formatTimeSince(ownerLastSeenEpoch), panelX + 66, panelY + 58, COL_TEXT_DIM, false);
         } else {
-            // Unclaimed — draw an empty slot with a "Claim" label
-            drawSlotBox(g, ownerSlotX, ownerSlotY, COL_SLOT_BG, COL_SLOT_BORDER);
-            g.drawCenteredString(font, "Unclaimed", ownerSlotX + SLOT_W / 2, ownerSlotY + SLOT_H / 2 - 4, COL_TEXT_DIM);
+            drawSlotBox(g, ownerX, ownerY, SLOT_W_OWNER, SLOT_H_OWNER, COL_SLOT_BG, COL_SLOT_BORDER);
+            g.drawCenteredString(font, "Unclaimed", ownerX + SLOT_W_OWNER / 2, ownerY + SLOT_H_OWNER / 2 - 4, COL_TEXT_DIM);
         }
+
+        // Add player section
+        g.drawString(font, "Add Co-owner:", panelX + 12, panelY + 92, COL_TEXT_DIM, false);
 
         // Co-owners section
         int coOwnerCount = coOwners.size();
-        g.drawString(font, "Co-owners  (" + coOwnerCount + " / 7)", panelX + 10, coOwnerRow1Y - 14, COL_SECTION_LABEL, false);
+        g.drawString(font, "Co-owners  (" + coOwnerCount + " / 7)", panelX + 172, panelY + 22, COL_SECTION_LABEL, false);
 
+        // Render co-owner slots (4x2 grid, up to 7 slots)
         for (int i = 0; i < 7; i++) {
-            int row = i / SLOTS_PER_ROW;
-            int col = i % SLOTS_PER_ROW;
-            int sx = coOwnerRowX + col * (SLOT_W + SLOT_GAP);
-            int sy = (row == 0 ? coOwnerRow1Y : coOwnerRow2Y);
+            int row = i / 4;
+            int col = i % 4;
+            int sx = panelX + 172 + col * (SLOT_W_CO + SLOT_GAP);
+            int sy = panelY + 32 + row * (SLOT_H_CO + SLOT_GAP);
             int logicalSlot = i + 1; // slot 0 = owner, 1-7 = co-owners
 
             if (i < coOwners.size()) {
                 S2COwnerScreenPacket.OwnerEntry entry = coOwners.get(i);
-                renderOwnerSlot(g, mouseX, mouseY, sx, sy, entry.uuid(), entry.name(), entry.lastSeenEpoch(), false);
+                renderCoOwnerSlot(g, mouseX, mouseY, sx, sy, entry.uuid(), entry.name(), entry.lastSeenEpoch());
                 // Remove X button (owner-only)
                 if (viewerIsOwner) {
-                    drawRemoveButton(g, sx + SLOT_W - 12, sy + 1, logicalSlot == removeConfirmSlot);
+                    drawRemoveButton(g, sx + SLOT_W_CO - 9, sy + 1, logicalSlot == removeConfirmSlot);
                 }
             } else {
                 // Empty slot
-                boolean hov = isInSlot(mouseX, mouseY, sx, sy);
-                drawSlotBox(g, sx, sy, hov ? COL_SLOT_HOVER : COL_SLOT_BG, COL_SLOT_BORDER);
-                g.drawCenteredString(font, "+", sx + SLOT_W / 2, sy + SLOT_H / 2 - 4, COL_TEXT_DIM);
+                boolean hov = isInCoSlot(mouseX, mouseY, sx, sy);
+                drawSlotBox(g, sx, sy, SLOT_W_CO, SLOT_H_CO, hov ? COL_SLOT_HOVER : COL_SLOT_BG, COL_SLOT_BORDER);
+                g.drawCenteredString(font, "+", sx + SLOT_W_CO / 2, sy + SLOT_H_CO / 2 - 4, COL_TEXT_DIM);
             }
         }
 
-        // Add player label
-        g.drawString(font, "Add player:", panelX + 10, panelY + PANEL_H - 53, COL_TEXT_DIM, false);
-
-        // Username field
+        // Render the username field (text box)
         usernameField.render(g, mouseX, mouseY, partialTick);
 
-        // Buttons
-        super.render(g, mouseX, mouseY, partialTick);
+        // 4. Render all registered widget components (Add, Tick Loading, Close buttons)
+        for (net.minecraft.client.gui.components.Renderable renderable : this.renderables) {
+            renderable.render(g, mouseX, mouseY, partialTick);
+        }
 
-        // Tooltips
+        // 5. Render tooltips last
         renderTooltips(g, mouseX, mouseY);
     }
 
@@ -259,45 +252,57 @@ public class ChunkLoaderOwnerScreen extends Screen {
         g.fill(panelX + PANEL_W - 1, panelY,               panelX + PANEL_W,  panelY + PANEL_H,          COL_PANEL_BORDER);
     }
 
-    private void drawSlotBox(GuiGraphics g, int x, int y, int bg, int border) {
-        g.fill(x, y, x + SLOT_W, y + SLOT_H, bg);
-        g.fill(x,            y,            x + SLOT_W, y + 1,        border);
-        g.fill(x,            y + SLOT_H-1, x + SLOT_W, y + SLOT_H,   border);
-        g.fill(x,            y,            x + 1,       y + SLOT_H,   border);
-        g.fill(x + SLOT_W-1, y,            x + SLOT_W,  y + SLOT_H,  border);
+    private void drawSlotBox(GuiGraphics g, int x, int y, int w, int h, int bg, int border) {
+        g.fill(x, y, x + w, y + h, bg);
+        g.fill(x,         y,         x + w, y + 1,     border);
+        g.fill(x,         y + h - 1, x + w, y + h,     border);
+        g.fill(x,         y,         x + 1, y + h,     border);
+        g.fill(x + w - 1, y,         x + w, y + h,     border);
     }
 
     private void renderOwnerSlot(GuiGraphics g, int mx, int my,
                                   int x, int y,
                                   UUID uuid, String name, long lastSeenEpoch,
                                   boolean isOwner) {
-        boolean hovered = isInSlot(mx, my, x, y);
-        int bg = isOwner ? COL_SLOT_OWNER : (hovered ? COL_SLOT_HOVER : COL_SLOT_BG);
-        drawSlotBox(g, x, y, bg, COL_SLOT_BORDER);
+        boolean hovered = isInOwnerSlot(mx, my, x, y);
+        int bg = hovered ? COL_SLOT_HOVER : COL_SLOT_OWNER;
+        drawSlotBox(g, x, y, SLOT_W_OWNER, SLOT_H_OWNER, bg, COL_SLOT_BORDER);
 
         // Player head item
         ItemStack headItem = makeHeadItem(uuid, name);
-        g.renderItem(headItem, x + 8, y + 6);
-
-        // Name (truncated)
-        String displayName = name.length() > 7 ? name.substring(0, 6) + "…" : name;
-        g.drawCenteredString(font, displayName, x + SLOT_W / 2, y + SLOT_H - 14, COL_TEXT_PRIMARY);
+        g.renderItem(headItem, x + 16, y + 12);
 
         // Owner crown badge
-        if (isOwner) {
-            g.drawString(font, "♛", x + 2, y + 2, 0xFFFFD700, false);
-        }
+        g.drawString(font, "♛", x + 2, y + 2, 0xFFFFD700, false);
+    }
+
+    private void renderCoOwnerSlot(GuiGraphics g, int mx, int my,
+                                    int x, int y,
+                                    UUID uuid, String name, long lastSeenEpoch) {
+        boolean hovered = isInCoSlot(mx, my, x, y);
+        int bg = hovered ? COL_SLOT_HOVER : COL_SLOT_BG;
+        drawSlotBox(g, x, y, SLOT_W_CO, SLOT_H_CO, bg, COL_SLOT_BORDER);
+
+        // Player head item
+        ItemStack headItem = makeHeadItem(uuid, name);
+        g.renderItem(headItem, x + 10, y + 4);
+
+        // Name (truncated)
+        String displayName = name.length() > 5 ? name.substring(0, 4) + "…" : name;
+        g.drawCenteredString(font, displayName, x + SLOT_W_CO / 2, y + SLOT_H_CO - 12, COL_TEXT_PRIMARY);
     }
 
     private void drawRemoveButton(GuiGraphics g, int x, int y, boolean confirming) {
         int color = confirming ? 0xFFFF4444 : COL_SLOT_REMOVE_BG;
-        g.fill(x, y, x + 11, y + 11, color);
-        g.drawCenteredString(font, "✕", x + 5, y + 1, 0xFFFFFFFF);
+        g.fill(x, y, x + 8, y + 8, color);
+        g.drawCenteredString(font, "✕", x + 4, y, 0xFFFFFFFF);
     }
 
     private void renderTooltips(GuiGraphics g, int mx, int my) {
         // Owner slot tooltip
-        if (ownerUUID != null && isInSlot(mx, my, ownerSlotX, ownerSlotY)) {
+        int ownerX = panelX + 12;
+        int ownerY = panelY + 32;
+        if (ownerUUID != null && isInOwnerSlot(mx, my, ownerX, ownerY)) {
             String timeStr = formatTimeSince(ownerLastSeenEpoch);
             g.renderTooltip(font, toSeqs(List.of(
                     Component.literal(ownerName).withStyle(ChatFormatting.GOLD),
@@ -309,11 +314,11 @@ public class ChunkLoaderOwnerScreen extends Screen {
 
         // Co-owner slot tooltips
         for (int i = 0; i < coOwners.size(); i++) {
-            int row = i / SLOTS_PER_ROW;
-            int col = i % SLOTS_PER_ROW;
-            int sx = coOwnerRowX + col * (SLOT_W + SLOT_GAP);
-            int sy = row == 0 ? coOwnerRow1Y : coOwnerRow2Y;
-            if (isInSlot(mx, my, sx, sy)) {
+            int row = i / 4;
+            int col = i % 4;
+            int sx = panelX + 172 + col * (SLOT_W_CO + SLOT_GAP);
+            int sy = panelY + 32 + row * (SLOT_H_CO + SLOT_GAP);
+            if (isInCoSlot(mx, my, sx, sy)) {
                 S2COwnerScreenPacket.OwnerEntry entry = coOwners.get(i);
                 String timeStr = formatTimeSince(entry.lastSeenEpoch());
                 List<Component> lines = new ArrayList<>();
@@ -345,12 +350,12 @@ public class ChunkLoaderOwnerScreen extends Screen {
         // Check remove-X buttons on co-owner slots
         if (viewerIsOwner && button == 0) {
             for (int i = 0; i < coOwners.size(); i++) {
-                int row = i / SLOTS_PER_ROW;
-                int col = i % SLOTS_PER_ROW;
-                int sx = coOwnerRowX + col * (SLOT_W + SLOT_GAP);
-                int sy = row == 0 ? coOwnerRow1Y : coOwnerRow2Y;
-                int rx = sx + SLOT_W - 12, ry = sy + 1;
-                if (imx >= rx && imx <= rx + 11 && imy >= ry && imy <= ry + 11) {
+                int row = i / 4;
+                int col = i % 4;
+                int sx = panelX + 172 + col * (SLOT_W_CO + SLOT_GAP);
+                int sy = panelY + 32 + row * (SLOT_H_CO + SLOT_GAP);
+                int rx = sx + SLOT_W_CO - 9, ry = sy + 1;
+                if (imx >= rx && imx <= rx + 8 && imy >= ry && imy <= ry + 8) {
                     int logicalSlot = i + 1;
                     if (removeConfirmSlot == logicalSlot) {
                         // Confirmed — send remove packet
@@ -411,8 +416,12 @@ public class ChunkLoaderOwnerScreen extends Screen {
     // Utilities
     // =========================================================================
 
-    private boolean isInSlot(int mx, int my, int sx, int sy) {
-        return mx >= sx && mx <= sx + SLOT_W && my >= sy && my <= sy + SLOT_H;
+    private boolean isInOwnerSlot(int mx, int my, int sx, int sy) {
+        return mx >= sx && mx <= sx + SLOT_W_OWNER && my >= sy && my <= sy + SLOT_H_OWNER;
+    }
+
+    private boolean isInCoSlot(int mx, int my, int sx, int sy) {
+        return mx >= sx && mx <= sx + SLOT_W_CO && my >= sy && my <= sy + SLOT_H_CO;
     }
 
     private static ItemStack makeHeadItem(UUID uuid, String name) {
