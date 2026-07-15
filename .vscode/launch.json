@@ -12,11 +12,11 @@
       "projectName": "create_power_loader",
       "mainClass": "net.neoforged.devlaunch.Main",
       "args": [
-        "@C:\\Users\\DJINN\\power loader\\create_power_loader\\build\\moddev\\clientRunProgramArgs.txt"
+        "@C:\\Users\\DMills\\PowerLoaders\\create_power_loader\\build\\moddev\\clientRunProgramArgs.txt"
       ],
       "vmArgs": [
-        "@C:\\Users\\DJINN\\power loader\\create_power_loader\\build\\moddev\\clientRunVmArgs.txt",
-        "-Dfml.modFolders\u003dcreate_power_loader%%C:\\Users\\DJINN\\power loader\\create_power_loader\\bin\\main"
+        "@C:\\Users\\DMills\\PowerLoaders\\create_power_loader\\build\\moddev\\clientRunVmArgs.txt",
+        "-Dfml.modFolders\u003dcreate_power_loader%%C:\\Users\\DMills\\PowerLoaders\\create_power_loader\\bin\\main"
       ],
       "cwd": "${workspaceFolder}\\run",
       "env": {},
@@ -34,11 +34,11 @@
       "projectName": "create_power_loader",
       "mainClass": "net.neoforged.devlaunch.Main",
       "args": [
-        "@C:\\Users\\DJINN\\power loader\\create_power_loader\\build\\moddev\\dataRunProgramArgs.txt"
+        "@C:\\Users\\DMills\\PowerLoaders\\create_power_loader\\build\\moddev\\dataRunProgramArgs.txt"
       ],
       "vmArgs": [
-        "@C:\\Users\\DJINN\\power loader\\create_power_loader\\build\\moddev\\dataRunVmArgs.txt",
-        "-Dfml.modFolders\u003dcreate_power_loader%%C:\\Users\\DJINN\\power loader\\create_power_loader\\bin\\main"
+        "@C:\\Users\\DMills\\PowerLoaders\\create_power_loader\\build\\moddev\\dataRunVmArgs.txt",
+        "-Dfml.modFolders\u003dcreate_power_loader%%C:\\Users\\DMills\\PowerLoaders\\create_power_loader\\bin\\main"
       ],
       "cwd": "${workspaceFolder}\\run-data",
       "env": {},
@@ -56,11 +56,11 @@
       "projectName": "create_power_loader",
       "mainClass": "net.neoforged.devlaunch.Main",
       "args": [
-        "@C:\\Users\\DJINN\\power loader\\create_power_loader\\build\\moddev\\gameTestServerRunProgramArgs.txt"
+        "@C:\\Users\\DMills\\PowerLoaders\\create_power_loader\\build\\moddev\\gameTestServerRunProgramArgs.txt"
       ],
       "vmArgs": [
-        "@C:\\Users\\DJINN\\power loader\\create_power_loader\\build\\moddev\\gameTestServerRunVmArgs.txt",
-        "-Dfml.modFolders\u003dcreate_power_loader%%C:\\Users\\DJINN\\power loader\\create_power_loader\\bin\\main"
+        "@C:\\Users\\DMills\\PowerLoaders\\create_power_loader\\build\\moddev\\gameTestServerRunVmArgs.txt",
+        "-Dfml.modFolders\u003dcreate_power_loader%%C:\\Users\\DMills\\PowerLoaders\\create_power_loader\\bin\\main"
       ],
       "cwd": "${workspaceFolder}\\run",
       "env": {},
@@ -78,11 +78,11 @@
       "projectName": "create_power_loader",
       "mainClass": "net.neoforged.devlaunch.Main",
       "args": [
-        "@C:\\Users\\DJINN\\power loader\\create_power_loader\\build\\moddev\\serverRunProgramArgs.txt"
+        "@C:\\Users\\DMills\\PowerLoaders\\create_power_loader\\build\\moddev\\serverRunProgramArgs.txt"
       ],
       "vmArgs": [
-        "@C:\\Users\\DJINN\\power loader\\create_power_loader\\build\\moddev\\serverRunVmArgs.txt",
-        "-Dfml.modFolders\u003dcreate_power_loader%%C:\\Users\\DJINN\\power loader\\create_power_loader\\bin\\main"
+        "@C:\\Users\\DMills\\PowerLoaders\\create_power_loader\\build\\moddev\\serverRunVmArgs.txt",
+        "-Dfml.modFolders\u003dcreate_power_loader%%C:\\Users\\DMills\\PowerLoaders\\create_power_loader\\bin\\main"
       ],
       "cwd": "${workspaceFolder}\\run-server",
       "env": {},
