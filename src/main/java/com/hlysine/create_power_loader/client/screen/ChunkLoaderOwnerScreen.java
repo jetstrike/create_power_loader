@@ -424,11 +424,20 @@ public class ChunkLoaderOwnerScreen extends Screen {
         return mx >= sx && mx <= sx + SLOT_W_CO && my >= sy && my <= sy + SLOT_H_CO;
     }
 
+    private static final java.util.Map<UUID, ResolvableProfile> PROFILE_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
+
     private static ItemStack makeHeadItem(UUID uuid, String name) {
         ItemStack stack = new ItemStack(Items.PLAYER_HEAD);
         try {
-            stack.set(DataComponents.PROFILE,
-                    new ResolvableProfile(Optional.of(name), Optional.of(uuid), new PropertyMap()));
+            ResolvableProfile cached = PROFILE_CACHE.get(uuid);
+            if (cached == null) {
+                cached = new ResolvableProfile(new com.mojang.authlib.GameProfile(uuid, name));
+                PROFILE_CACHE.put(uuid, cached);
+                cached.resolve().thenAccept(resolved -> {
+                    PROFILE_CACHE.put(uuid, resolved);
+                });
+            }
+            stack.set(DataComponents.PROFILE, cached);
         } catch (Exception ignored) {
             // Fall back to plain skull
         }
