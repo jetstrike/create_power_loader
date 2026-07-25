@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added robust Player Ownership & Inactivity Suppression system to prevent unattended multiplayer lag
+- Added custom GUI screen for managing Primary Owners and adding trusted Co-Owners with real-time status display
+- Automatic 72-hour inactivity suppression with server operator alerts and automatic ownership transfer after 20 days of absence
+- Added `/powerloader bypass <player>` operator command to grant permanent exemption for essential spawn or community builds
+- Added `/powerloader owners` (and `/powerloader active`) command to summarize all active chunk loading players in chat with clickable `[Unload]` buttons
+- Added `/powerloader unload` interactive operator command to automatically find and confirm shedding chunk loaders from the most stale offline player
+- Added `/powerloader unload <player>` and `/powerloader resume <player>` for manual real-time admin override (resumes automatically upon player login)
 - Added per-loader "Tick Loading" toggle (sneak + right-click the chunk loader to toggle)
 - When enabled, crops, saplings, and other random-tick blocks will grow in loaded chunks even without a nearby player
 - Added `enableRandomTicks` server config option to globally allow or disallow this feature

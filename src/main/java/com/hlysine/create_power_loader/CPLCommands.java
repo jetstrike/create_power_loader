@@ -1,8 +1,6 @@
 package com.hlysine.create_power_loader;
 
-import com.hlysine.create_power_loader.command.BypassCommand;
-import com.hlysine.create_power_loader.command.ListLoadersCommand;
-import com.hlysine.create_power_loader.command.SummaryCommand;
+import com.hlysine.create_power_loader.command.*;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.tree.CommandNode;
@@ -19,7 +17,11 @@ public class CPLCommands {
                 .requires(cs -> cs.hasPermission(2))
                 .then(SummaryCommand.register())
                 .then(ListLoadersCommand.register())
-                .then(BypassCommand.register());
+                .then(BypassCommand.register())
+                .then(UnloadCommand.registerUnload())
+                .then(UnloadCommand.registerResume())
+                .then(OwnersCommand.registerOwners())
+                .then(OwnersCommand.registerActive());
 
         LiteralCommandNode<CommandSourceStack> cplRoot = dispatcher.register(root);
 

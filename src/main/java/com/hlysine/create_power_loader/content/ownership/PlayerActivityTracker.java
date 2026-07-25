@@ -24,12 +24,16 @@ public class PlayerActivityTracker extends SavedData {
     private static final String TAG_UUID = "UUID";
     private static final String TAG_LAST_SEEN = "LastSeen";
     private static final String TAG_BYPASSED = "BypassedUUIDs";
+    private static final String TAG_FORCE_UNLOADED = "ForceUnloadedUUIDs";
 
     /** Epoch-second of the most-recent login for each UUID. */
     private final Map<UUID, Long> lastSeenMap = new HashMap<>();
 
     /** UUIDs permanently exempted from inactivity suppression via admin command. */
     private final Set<UUID> bypassedPlayers = new HashSet<>();
+
+    /** UUIDs manually suppressed/unloaded by an operator command. */
+    private final Set<UUID> forceUnloadedPlayers = new HashSet<>();
 
     public static final SavedData.Factory<PlayerActivityTracker> FACTORY = new SavedData.Factory<>(
             PlayerActivityTracker::new,
@@ -52,9 +56,10 @@ public class PlayerActivityTracker extends SavedData {
     // Activity recording
     // -------------------------------------------------------------------------
 
-    /** Call on PlayerLoggedInEvent — resets the 72-hour clock for this player. */
+    /** Call on PlayerLoggedInEvent — resets the 72-hour clock and lifts forced unload for this player. */
     public void recordSeen(UUID uuid) {
         lastSeenMap.put(uuid, Instant.now().getEpochSecond());
+        forceUnloadedPlayers.remove(uuid);
         setDirty();
     }
 
@@ -101,6 +106,31 @@ public class PlayerActivityTracker extends SavedData {
     }
 
     // -------------------------------------------------------------------------
+    // Force unload management
+    // -------------------------------------------------------------------------
+
+    public void forceUnload(UUID uuid) {
+        forceUnloadedPlayers.add(uuid);
+        setDirty();
+    }
+
+    public boolean resume(UUID uuid) {
+        boolean removed = forceUnloadedPlayers.remove(uuid);
+        if (removed) {
+            setDirty();
+        }
+        return removed;
+    }
+
+    public boolean isForceUnloaded(UUID uuid) {
+        return forceUnloadedPlayers.contains(uuid);
+    }
+
+    public Set<UUID> getForceUnloadedPlayers() {
+        return Collections.unmodifiableSet(forceUnloadedPlayers);
+    }
+
+    // -------------------------------------------------------------------------
     // SavedData serialization
     // -------------------------------------------------------------------------
 
@@ -126,6 +156,14 @@ public class PlayerActivityTracker extends SavedData {
             }
         }
 
+        ListTag forceUnloaded = tag.getList(TAG_FORCE_UNLOADED, Tag.TAG_STRING);
+        for (int i = 0; i < forceUnloaded.size(); i++) {
+            try {
+                tracker.forceUnloadedPlayers.add(UUID.fromString(forceUnloaded.getString(i)));
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+
         return tracker;
     }
 
@@ -145,6 +183,12 @@ public class PlayerActivityTracker extends SavedData {
             bypassed.add(StringTag.valueOf(uuid.toString()));
         }
         tag.put(TAG_BYPASSED, bypassed);
+
+        ListTag forceUnloaded = new ListTag();
+        for (UUID uuid : forceUnloadedPlayers) {
+            forceUnloaded.add(StringTag.valueOf(uuid.toString()));
+        }
+        tag.put(TAG_FORCE_UNLOADED, forceUnloaded);
 
         return tag;
     }

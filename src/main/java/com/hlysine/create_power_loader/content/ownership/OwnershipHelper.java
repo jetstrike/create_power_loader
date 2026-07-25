@@ -53,6 +53,11 @@ public final class OwnershipHelper {
         return false;
     }
 
+    public static boolean isForceUnloaded(@Nullable UUID ownerUUID, MinecraftServer server) {
+        if (ownerUUID == null) return false;
+        return PlayerActivityTracker.getOrCreate(server).isForceUnloaded(ownerUUID);
+    }
+
     private static boolean isPlayerActive(
             UUID uuid,
             PlayerActivityTracker tracker,

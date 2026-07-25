@@ -28,6 +28,25 @@ A Create mod add-on adding immersive andesite and brass chunk loaders to Minecra
 
 Support for Create 0.5.1 and Minecraft 1.18/1.19 has been dropped. Please use Create: Power Loader v1 if you are using Create 0.5.1.
 
+## ✨ Advanced Player Ownership & Server Administration
+
+Create: Power Loader features a complete **Player Ownership and Multiplayer Protection System** designed to keep server lag in check without sacrificing player convenience:
+
+### 👤 Player Ownership & Co-Owners
+- **Automatic Ownership Claiming**: Chunk loaders automatically bind to the placing player. Unclaimed loaders do not force chunks, preventing server abuse.
+- **Co-Owner Management UI**: Open the dedicated in-game interface to view ownership status and add trusted friends as co-owners. As long as any owner or co-owner is online (or active within the threshold), machines continue loading seamlessly.
+- **Automatic Ownership Transfer**: If a primary owner stops playing, ownership automatically transfers to an active co-owner after 20 days of absence.
+
+### 🛡️ Lag Prevention & Inactivity Suppression
+- **72-Hour Inactivity Timeout**: If all owners and co-owners of a chunk loader remain offline for 72 hours, their loaders automatically suspend operation to preserve server resources and alert operators.
+- **Permanent Bypass Exemption**: Operators can permanently exempt public infrastructure (such as spawn rail networks or community farms) using `/powerloader bypass <player>`.
+
+### ⚡ Interactive Operator Commands
+Inspect, diagnose, and unload chunk loaders directly in Minecraft chat with interactive, clickable action buttons:
+- **`/powerloader owners`** (or `/powerloader active`): Displays a clean dashboard of every player currently keeping chunks loaded, sorted by chunk count, complete with online status, offline timer, and an inline **`[Unload]`** button!
+- **`/powerloader unload`**: Automatically pinpoints the player who has been offline the longest while running automated loaders, offering a simple **`[Click to Confirm Unloading]`** chat button to instantly free up server capacity.
+- **`/powerloader unload <player>`** & **`/powerloader resume <player>`**: Manually suspend or reactivate any individual player's machines on command. Forcefully unloaded machines automatically restore themselves the moment the owner logs back into the game!
+
 ## Features
 
 > Check out the [Wiki](https://github.com/hlysine/create_power_loader/wiki) for more info!
@@ -35,6 +54,8 @@ Support for Create 0.5.1 and Minecraft 1.18/1.19 has been dropped. Please use Cr
 - 2 tiers of chunk loaders
     - Brass chunk loader: configurable loading range (1x1 to 5x5)
     - Andesite chunk loader: loads a single chunk
+- Advanced multiplayer lag protection with player ownership, co-owners, and inactivity timers
+- Interactive operator diagnostic chat tools for monitoring and shedding server load on demand
 - Works on the ground, on trains and on contraptions
     - Configurable via server configs
     - Toggleable in-game via contraption controls

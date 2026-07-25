@@ -266,10 +266,12 @@ public abstract class AbstractChunkLoaderBlockEntity extends KineticBlockEntity 
             if (needsUpdate()) {
                 // Detect suppression state transitions and notify OPs
                 if (level.getServer() != null && ownerUUID != null) {
-                    boolean nowSuppressed = !OwnershipHelper.hasActiveAuthorizedPlayer(ownerUUID, coOwners, level.getServer());
+                    boolean inactive = !OwnershipHelper.hasActiveAuthorizedPlayer(ownerUUID, coOwners, level.getServer());
+                    boolean forced = OwnershipHelper.isForceUnloaded(ownerUUID, level.getServer());
+                    boolean nowSuppressed = inactive || forced;
                     if (nowSuppressed && !suppressedByInactivity) {
                         suppressedByInactivity = true;
-                        if (!suppressionNotified) {
+                        if (!suppressionNotified && inactive && !forced) {
                             suppressionNotified = true;
                             OwnershipHelper.notifyOpsOfSuppression(ownerUUID, 1, level.getServer());
                         }
@@ -346,6 +348,7 @@ public abstract class AbstractChunkLoaderBlockEntity extends KineticBlockEntity 
         }
         MinecraftServer server = level != null ? level.getServer() : null;
         if (server != null) {
+            if (OwnershipHelper.isForceUnloaded(ownerUUID, server)) return false;
             return OwnershipHelper.hasActiveAuthorizedPlayer(ownerUUID, coOwners, server);
         }
         return false;
@@ -485,5 +488,27 @@ public abstract class AbstractChunkLoaderBlockEntity extends KineticBlockEntity 
 
         Vec3 motion = normal.scale(speed);
         level.addParticle(ParticleTypes.PORTAL, v2.x, v2.y, v2.z, motion.x, motion.y, motion.z);
+    }
+
+    public static int forceUpdateLoadersFor(UUID owner, MinecraftServer server) {
+        int count = 0;
+        for (WeakCollection<ChunkLoader> collection : ChunkLoadManager.allLoaders.values()) {
+            for (ChunkLoader loader : collection) {
+                if (loader instanceof AbstractChunkLoaderBlockEntity be) {
+                    if (owner.equals(be.getOwnerUUID())) {
+                        if (be.getLevel() == null || be.getLevel().isClientSide()) continue;
+                        be.chunkUpdateCooldown = 0;
+                        if (!be.canLoadChunks()) {
+                            be.chunkUnloadCooldown = CPLConfigs.server().getFor(be.type).unloadGracePeriod.get();
+                        }
+                        be.updateForcedChunks();
+                        be.setChanged();
+                        be.notifyUpdate();
+                        count++;
+                    }
+                }
+            }
+        }
+        return count;
     }
 }
