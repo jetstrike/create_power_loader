@@ -32,19 +32,19 @@ Support for Create 0.5.1 and Minecraft 1.18/1.19 has been dropped. Please use Cr
 
 Create: Power Loader features a complete **Player Ownership and Multiplayer Protection System** designed to keep server lag in check without sacrificing player convenience:
 
-### 👤 Player Ownership & Co-Owners
+### Player Ownership & Co-Owners
 - **Automatic Ownership Claiming**: Chunk loaders automatically bind to the placing player. Unclaimed loaders do not force chunks, preventing server abuse.
 - **Co-Owner Management UI**: Open the dedicated in-game interface to view ownership status and add trusted friends as co-owners. As long as any owner or co-owner is online (or active within the threshold), machines continue loading seamlessly.
 - **Automatic Ownership Transfer**: If a primary owner stops playing, ownership automatically transfers to an active co-owner after 20 days of absence.
 
-### 🛡️ Lag Prevention & Inactivity Suppression
+### Lag Prevention & Inactivity Suppression
 - **72-Hour Inactivity Timeout**: If all owners and co-owners of a chunk loader remain offline for 72 hours, their loaders automatically suspend operation to preserve server resources and alert operators.
 - **Load-Scaled Distributed Cooldown**: Configurable dynamic timeout scaling (`enableDistributedCooldown`). Players running expansive farming networks with excessive loaded chunks (e.g., four 5x5 loaders = 100 chunks) receive proportional reductions to their active offline cooldowns (e.g., cut down from 72 hours to 18 hours), incentivizing optimized automated footprints!
 - **Co-Owner Cooldown Multipliers**: When relying on an active co-owner after the primary owner logs out, active windows are scaled by a configurable multiplier (`coOwnerActivityMultiplier`, default 50%).
 - **Tick-Loading Quotas**: Administrators can cap how many machines a single player can run with random-tick farm growth enabled simultaneously (`maxTickLoadingLoadersPerPlayer`, default 1).
 - **Permanent Bypass Exemption**: Operators can permanently exempt public infrastructure (such as spawn rail networks or community farms) using `/powerloader bypass <player>`.
 
-### ⚡ Interactive Diagnostic & Management Commands
+### Interactive Diagnostic & Management Commands
 Inspect, diagnose, and manage chunk loaders directly in Minecraft chat with real-time timers and clickable action buttons:
 - **`/powerloader status`** (Available to all players): Instantly inspect your personal automation dashboard showing total loaded chunk capacity, tick-loading machine usage (`1 / 1 max`), and real-time countdown timers for both primary and co-owner logout cooldowns!
 - **`/powerloader status <player>`**: Allow server administrators to inspect any online player's timers and quotas on demand.
