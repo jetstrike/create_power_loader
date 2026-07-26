@@ -21,7 +21,8 @@ public class CPLCommands {
                 .then(UnloadCommand.registerUnload())
                 .then(UnloadCommand.registerResume())
                 .then(OwnersCommand.registerOwners())
-                .then(OwnersCommand.registerActive());
+                .then(OwnersCommand.registerActive())
+                .then(StatusCommand.register());
 
         LiteralCommandNode<CommandSourceStack> cplRoot = dispatcher.register(root);
 

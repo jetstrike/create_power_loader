@@ -1,6 +1,10 @@
 package com.hlysine.create_power_loader.content.ownership;
 
 import com.hlysine.create_power_loader.config.CPLConfigs;
+import com.hlysine.create_power_loader.content.AbstractChunkLoaderBlockEntity;
+import com.hlysine.create_power_loader.content.ChunkLoadManager;
+import com.hlysine.create_power_loader.content.ChunkLoader;
+import com.hlysine.create_power_loader.content.WeakCollection;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -36,6 +40,44 @@ public final class OwnershipHelper {
      * @param coOwners   list of co-owner UUIDs (may be empty)
      * @param server     the running server
      */
+    public static int getTotalConfiguredChunksFor(UUID ownerUUID) {
+        if (ownerUUID == null) return 0;
+        int totalChunks = 0;
+        for (WeakCollection<ChunkLoader> collection : ChunkLoadManager.allLoaders.values()) {
+            for (ChunkLoader loader : collection) {
+                if (loader instanceof AbstractChunkLoaderBlockEntity be && ownerUUID.equals(be.getOwnerUUID())) {
+                    int side = 2 * be.getLoadingRange() - 1;
+                    totalChunks += side * side;
+                }
+            }
+        }
+        return totalChunks;
+    }
+
+    public static int countTickLoadingLoadersFor(UUID ownerUUID) {
+        if (ownerUUID == null) return 0;
+        int count = 0;
+        for (WeakCollection<ChunkLoader> collection : ChunkLoadManager.allLoaders.values()) {
+            for (ChunkLoader loader : collection) {
+                if (loader instanceof AbstractChunkLoaderBlockEntity be && ownerUUID.equals(be.getOwnerUUID()) && be.tickLoadingEnabled) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    public static long getEffectiveThresholdSeconds(UUID ownerUUID, MinecraftServer server) {
+        long baseSeconds = (long) CPLConfigs.server().inactiveThresholdHours.get() * 3600L;
+        if (!CPLConfigs.server().enableDistributedCooldown.get()) {
+            return baseSeconds;
+        }
+        int totalChunks = getTotalConfiguredChunksFor(ownerUUID);
+        int chunkDivisor = Math.max(1, CPLConfigs.server().distributedCooldownChunkDivisor.get());
+        double divisor = Math.max(1.0, (double) totalChunks / (double) chunkDivisor);
+        return (long) (baseSeconds / divisor);
+    }
+
     public static boolean hasActiveAuthorizedPlayer(
             @Nullable UUID ownerUUID,
             List<UUID> coOwners,
@@ -44,11 +86,13 @@ public final class OwnershipHelper {
         if (ownerUUID == null) return false;
 
         PlayerActivityTracker tracker = PlayerActivityTracker.getOrCreate(server);
-        long thresholdSeconds = (long) CPLConfigs.server().inactiveThresholdHours.get() * 3600L;
+        long primaryThreshold = getEffectiveThresholdSeconds(ownerUUID, server);
 
-        if (isPlayerActive(ownerUUID, tracker, thresholdSeconds, server)) return true;
+        if (isPlayerActive(ownerUUID, tracker, primaryThreshold, server)) return true;
+
+        long coOwnerThreshold = (long) (primaryThreshold * CPLConfigs.server().coOwnerActivityMultiplier.get());
         for (UUID coOwner : coOwners) {
-            if (isPlayerActive(coOwner, tracker, thresholdSeconds, server)) return true;
+            if (isPlayerActive(coOwner, tracker, coOwnerThreshold, server)) return true;
         }
         return false;
     }

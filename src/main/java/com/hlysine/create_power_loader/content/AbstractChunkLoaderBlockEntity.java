@@ -229,8 +229,18 @@ public abstract class AbstractChunkLoaderBlockEntity extends KineticBlockEntity 
             if (!(be instanceof StationBlockEntity sbe)) return;
             updateAttachedStation(sbe);
         } else {
-            if (!level.isClientSide())
+            if (!level.isClientSide()) {
                 addToManager();
+                if (tickLoadingEnabled && ownerUUID != null && level instanceof ServerLevel serverLevel) {
+                    int limit = CPLConfigs.server().maxTickLoadingLoadersPerPlayer.get();
+                    if (limit >= 0 && !OwnershipHelper.isForceUnloaded(ownerUUID, serverLevel.getServer())) {
+                        PlayerActivityTracker tracker = PlayerActivityTracker.getOrCreate(serverLevel.getServer());
+                        if (!tracker.isBypassed(ownerUUID) && OwnershipHelper.countTickLoadingLoadersFor(ownerUUID) > limit) {
+                            tickLoadingEnabled = false;
+                        }
+                    }
+                }
+            }
         }
     }
 

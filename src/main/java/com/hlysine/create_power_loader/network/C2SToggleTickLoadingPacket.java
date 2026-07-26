@@ -1,7 +1,11 @@
 package com.hlysine.create_power_loader.network;
 
+import com.hlysine.create_power_loader.config.CPLConfigs;
 import com.hlysine.create_power_loader.content.AbstractChunkLoaderBlockEntity;
+import com.hlysine.create_power_loader.content.ownership.OwnershipHelper;
+import com.hlysine.create_power_loader.content.ownership.PlayerActivityTracker;
 import io.netty.buffer.ByteBuf;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -39,8 +43,26 @@ public record C2SToggleTickLoadingPacket(BlockPos pos) implements CustomPacketPa
             // Only owner or co-owner may toggle this
             if (!be.isAuthorizedUser(player.getUUID())) {
                 player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-                        "[PowerLoader] You are not authorized to configure this loader."));
+                        "[PowerLoader] You are not authorized to configure this loader.").withStyle(ChatFormatting.RED));
                 return;
+            }
+
+            if (!be.tickLoadingEnabled) {
+                int limit = CPLConfigs.server().maxTickLoadingLoadersPerPlayer.get();
+                boolean bypass = false;
+                if (be.getOwnerUUID() != null) {
+                    PlayerActivityTracker tracker = PlayerActivityTracker.getOrCreate(level.getServer());
+                    bypass = tracker.isBypassed(be.getOwnerUUID()) || (level.getServer().getPlayerList().isOp(player.getGameProfile()) && CPLConfigs.server().opBypassOwnerCheck.get());
+                }
+                if (!bypass && limit >= 0) {
+                    int count = OwnershipHelper.countTickLoadingLoadersFor(be.getOwnerUUID());
+                    if (count >= limit) {
+                        player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                                "[PowerLoader] Cannot enable tick loading: maximum limit reached (" + limit + " per player).")
+                                .withStyle(ChatFormatting.RED));
+                        return;
+                    }
+                }
             }
 
             be.toggleTickLoading();

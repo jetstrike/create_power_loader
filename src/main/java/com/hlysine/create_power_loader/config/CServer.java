@@ -26,6 +26,18 @@ public class CServer extends ConfigBase {
     public final ConfigBool notifyOpsOnSuppression = b(true, "notifyOpsOnSuppression",
             Comments.notifyOpsOnSuppression);
 
+    public final ConfigInt maxTickLoadingLoadersPerPlayer = i(1, 0, 1000, "maxTickLoadingLoadersPerPlayer",
+            Comments.maxTickLoadingLoadersPerPlayer);
+
+    public final ConfigBool enableDistributedCooldown = b(true, "enableDistributedCooldown",
+            Comments.enableDistributedCooldown);
+
+    public final ConfigInt distributedCooldownChunkDivisor = i(25, 1, 10000, "distributedCooldownChunkDivisor",
+            Comments.distributedCooldownChunkDivisor);
+
+    public final ConfigFloat coOwnerActivityMultiplier = f(0.5f, 0.0f, 1.0f, "coOwnerActivityMultiplier",
+            Comments.coOwnerActivityMultiplier);
+
     public CLoader getFor(LoaderType type) {
         return switch (type) {
             case ANDESITE -> andesite;
@@ -51,5 +63,9 @@ public class CServer extends ConfigBase {
         static String ownershipTransferDays = "Days since the owner's last login before ownership transfers to the most-recently-active co-owner. Default: 7";
         static String opBypassOwnerCheck = "If true, players with OP permission (level >= 2) or on the bypass list always bypass inactivity suppression";
         static String notifyOpsOnSuppression = "If true, all online OPs are notified in chat when a player's loaders are suppressed due to inactivity";
+        static String maxTickLoadingLoadersPerPlayer = "Maximum number of chunk loaders with tick loading enabled allowed per player simultaneously. Default: 1";
+        static String enableDistributedCooldown = "If true, active loading duration after player logout is dynamically reduced based on total chunks loaded across all machines. Default: true";
+        static String distributedCooldownChunkDivisor = "Number of loaded chunks that acts as the divisor unit for distributed cooldown calculations (e.g., 25 chunks = one 5x5 loader). Default: 25";
+        static String coOwnerActivityMultiplier = "Multiplier applied to the active loading cooldown when relying on a co-owner rather than the primary owner. Default: 0.5 (50% of normal duration)";
     }
 }

@@ -74,9 +74,14 @@ public class OwnersCommand {
             int chunksCount = activeChunks.get(owner);
 
             boolean isOnline = server.getPlayerList().getPlayer(owner) != null;
+            long maxCooldown = OwnershipHelper.getEffectiveThresholdSeconds(owner, server);
+            long maxHours = maxCooldown / 3600;
+            long maxMinutes = (maxCooldown % 3600) / 60;
+            String maxStr = maxHours + "h " + maxMinutes + "m";
+
             MutableComponent statusComp;
             if (isOnline) {
-                statusComp = Component.literal(" [ONLINE]").withStyle(ChatFormatting.GREEN);
+                statusComp = Component.literal(" [ONLINE | Max Cooldown: " + maxStr + "]").withStyle(ChatFormatting.GREEN);
             } else {
                 long lastSeen = tracker.getLastSeenEpoch(owner);
                 long diff = Math.max(0, now - lastSeen);
@@ -84,7 +89,14 @@ public class OwnersCommand {
                 long minutes = (diff % 3600) / 60;
                 String timeStr = hours > 0 ? hours + "h " + minutes + "m" : minutes + "m";
                 if (lastSeen == 0) timeStr = "?";
-                statusComp = Component.literal(" [Offline " + timeStr + "]").withStyle(ChatFormatting.GRAY);
+
+                long timeLeft = Math.max(0, maxCooldown - diff);
+                long remHours = timeLeft / 3600;
+                long remMinutes = (timeLeft % 3600) / 60;
+                String remStr = remHours + "h " + remMinutes + "m left";
+                if (timeLeft == 0) remStr = "EXPIRED";
+
+                statusComp = Component.literal(" [Offline " + timeStr + " | " + remStr + "]").withStyle(ChatFormatting.GRAY);
             }
 
             String unloadCmd = "/powerloader unload confirm " + owner.toString();
