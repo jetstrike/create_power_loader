@@ -28,7 +28,7 @@ A Create mod add-on adding immersive andesite and brass chunk loaders to Minecra
 
 Support for Create 0.5.1 and Minecraft 1.18/1.19 has been dropped. Please use Create: Power Loader v1 if you are using Create 0.5.1.
 
-## ✨ Advanced Player Ownership & Server Administration
+## Advanced Player Ownership & Server Administration
 
 Create: Power Loader features a complete **Player Ownership and Multiplayer Protection System** designed to keep server lag in check without sacrificing player convenience:
 
