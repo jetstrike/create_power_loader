@@ -2,6 +2,7 @@ package com.hlysine.create_power_loader;
 
 import com.hlysine.create_power_loader.compat.Mods;
 import com.hlysine.create_power_loader.config.CPLConfigs;
+import com.hlysine.create_power_loader.content.AbstractChunkLoaderBlockEntity;
 import com.hlysine.create_power_loader.content.ChunkLoadManager;
 import com.hlysine.create_power_loader.content.ownership.PlayerActivityTracker;
 import com.hlysine.create_power_loader.network.CPLNetwork;
@@ -72,6 +73,7 @@ public class CreatePowerLoader {
         var server = event.getEntity().getServer();
         if (server == null) return;
         PlayerActivityTracker.getOrCreate(server).recordSeen(event.getEntity().getUUID());
+        AbstractChunkLoaderBlockEntity.forceUpdateLoadersFor(event.getEntity().getUUID(), server);
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {

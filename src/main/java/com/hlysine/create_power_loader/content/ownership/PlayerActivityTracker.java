@@ -1,12 +1,15 @@
 package com.hlysine.create_power_loader.content.ownership;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.saveddata.SavedData;
+import org.jetbrains.annotations.NotNull;
 
 import java.time.Instant;
 import java.util.*;
@@ -19,12 +22,21 @@ import java.util.*;
  */
 public class PlayerActivityTracker extends SavedData {
 
+    public record GlobalLoaderPos(@NotNull ResourceLocation dimension, @NotNull BlockPos pos) {
+    }
+
     private static final String DATA_NAME = "create_power_loader_activity";
     private static final String TAG_PLAYERS = "Players";
     private static final String TAG_UUID = "UUID";
     private static final String TAG_LAST_SEEN = "LastSeen";
     private static final String TAG_BYPASSED = "BypassedUUIDs";
     private static final String TAG_FORCE_UNLOADED = "ForceUnloadedUUIDs";
+    private static final String TAG_TRACKED_LOADERS = "TrackedLoaders";
+    private static final String TAG_LOADER_LIST = "Loaders";
+    private static final String TAG_DIMENSION = "Dim";
+    private static final String TAG_X = "X";
+    private static final String TAG_Y = "Y";
+    private static final String TAG_Z = "Z";
 
     /** Epoch-second of the most-recent login for each UUID. */
     private final Map<UUID, Long> lastSeenMap = new HashMap<>();
@@ -34,6 +46,9 @@ public class PlayerActivityTracker extends SavedData {
 
     /** UUIDs manually suppressed/unloaded by an operator command. */
     private final Set<UUID> forceUnloadedPlayers = new HashSet<>();
+
+    /** Coordinates of chunk loaders associated with each player UUID (owners and co-owners). */
+    private final Map<UUID, Set<GlobalLoaderPos>> trackedLoaders = new HashMap<>();
 
     public static final SavedData.Factory<PlayerActivityTracker> FACTORY = new SavedData.Factory<>(
             PlayerActivityTracker::new,
@@ -131,6 +146,34 @@ public class PlayerActivityTracker extends SavedData {
     }
 
     // -------------------------------------------------------------------------
+    // Loader location tracking
+    // -------------------------------------------------------------------------
+
+    public void trackLoader(UUID user, ResourceLocation dimension, BlockPos pos) {
+        if (user == null || dimension == null || pos == null) return;
+        boolean added = trackedLoaders.computeIfAbsent(user, k -> new HashSet<>()).add(new GlobalLoaderPos(dimension, pos.immutable()));
+        if (added) {
+            setDirty();
+        }
+    }
+
+    public void untrackLoader(UUID user, ResourceLocation dimension, BlockPos pos) {
+        if (user == null || dimension == null || pos == null) return;
+        Set<GlobalLoaderPos> set = trackedLoaders.get(user);
+        if (set != null && set.remove(new GlobalLoaderPos(dimension, pos))) {
+            if (set.isEmpty()) {
+                trackedLoaders.remove(user);
+            }
+            setDirty();
+        }
+    }
+
+    public Set<GlobalLoaderPos> getTrackedLoaders(UUID user) {
+        Set<GlobalLoaderPos> set = trackedLoaders.get(user);
+        return set != null ? Collections.unmodifiableSet(new HashSet<>(set)) : Collections.emptySet();
+    }
+
+    // -------------------------------------------------------------------------
     // SavedData serialization
     // -------------------------------------------------------------------------
 
@@ -164,6 +207,28 @@ public class PlayerActivityTracker extends SavedData {
             }
         }
 
+        ListTag trackedList = tag.getList(TAG_TRACKED_LOADERS, Tag.TAG_COMPOUND);
+        for (int i = 0; i < trackedList.size(); i++) {
+            CompoundTag entry = trackedList.getCompound(i);
+            try {
+                UUID uuid = UUID.fromString(entry.getString(TAG_UUID));
+                ListTag loaders = entry.getList(TAG_LOADER_LIST, Tag.TAG_COMPOUND);
+                Set<GlobalLoaderPos> set = new HashSet<>();
+                for (int j = 0; j < loaders.size(); j++) {
+                    CompoundTag lTag = loaders.getCompound(j);
+                    ResourceLocation dim = ResourceLocation.tryParse(lTag.getString(TAG_DIMENSION));
+                    if (dim != null) {
+                        BlockPos pos = new BlockPos(lTag.getInt(TAG_X), lTag.getInt(TAG_Y), lTag.getInt(TAG_Z));
+                        set.add(new GlobalLoaderPos(dim, pos));
+                    }
+                }
+                if (!set.isEmpty()) {
+                    tracker.trackedLoaders.put(uuid, set);
+                }
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+
         return tracker;
     }
 
@@ -189,6 +254,25 @@ public class PlayerActivityTracker extends SavedData {
             forceUnloaded.add(StringTag.valueOf(uuid.toString()));
         }
         tag.put(TAG_FORCE_UNLOADED, forceUnloaded);
+
+        ListTag trackedList = new ListTag();
+        for (Map.Entry<UUID, Set<GlobalLoaderPos>> entry : trackedLoaders.entrySet()) {
+            if (entry.getValue().isEmpty()) continue;
+            CompoundTag playerTag = new CompoundTag();
+            playerTag.putString(TAG_UUID, entry.getKey().toString());
+            ListTag loaders = new ListTag();
+            for (GlobalLoaderPos loaderPos : entry.getValue()) {
+                CompoundTag lTag = new CompoundTag();
+                lTag.putString(TAG_DIMENSION, loaderPos.dimension().toString());
+                lTag.putInt(TAG_X, loaderPos.pos().getX());
+                lTag.putInt(TAG_Y, loaderPos.pos().getY());
+                lTag.putInt(TAG_Z, loaderPos.pos().getZ());
+                loaders.add(lTag);
+            }
+            playerTag.put(TAG_LOADER_LIST, loaders);
+            trackedList.add(playerTag);
+        }
+        tag.put(TAG_TRACKED_LOADERS, trackedList);
 
         return tag;
     }

@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 2.1.1 - 2026-07-27
+
+### Added
+
+- Added persistent loader coordinate tracking via SavedData NBT to allow automated awakening of unloaded machines
+- Added automatic brief chunk force-loading on player join and via operator bypass/resume commands so all of a player's unloaded chunk loaders turn on immediately without requiring a player to visit the chunks
+
 ## 2.1.0 - 2026-07-26
 
 ### Added

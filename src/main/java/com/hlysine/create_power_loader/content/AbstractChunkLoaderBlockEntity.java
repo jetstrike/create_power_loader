@@ -13,11 +13,13 @@ import net.createmod.catnip.data.Pair;
 import net.createmod.catnip.math.VecHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -99,11 +101,13 @@ public abstract class AbstractChunkLoaderBlockEntity extends KineticBlockEntity 
      * Records them as owner and timestamps their activity.
      */
     public void claimLoader(Player player) {
+        updateTracking(false);
         this.ownerUUID = player.getUUID();
+        updateTracking(true);
         this.suppressedByInactivity = false;
         this.suppressionNotified = false;
         // Record the claimer as seen so the 72h timer starts from now
-        MinecraftServer server = level.getServer();
+        MinecraftServer server = level != null ? level.getServer() : null;
         if (server != null) {
             PlayerActivityTracker.getOrCreate(server).recordSeen(ownerUUID);
         }
@@ -121,7 +125,9 @@ public abstract class AbstractChunkLoaderBlockEntity extends KineticBlockEntity 
     public boolean addCoOwner(UUID uuid) {
         if (coOwners.size() >= MAX_CO_OWNERS) return false;
         if (coOwners.contains(uuid)) return false;
+        updateTracking(false);
         coOwners.add(uuid);
+        updateTracking(true);
         setChanged();
         notifyUpdate();
         return true;
@@ -131,7 +137,9 @@ public abstract class AbstractChunkLoaderBlockEntity extends KineticBlockEntity 
      * Removes a co-owner.  Returns false if the UUID is not in the list.
      */
     public boolean removeCoOwner(UUID uuid) {
+        updateTracking(false);
         boolean removed = coOwners.remove(uuid);
+        updateTracking(true);
         if (removed) {
             setChanged();
             notifyUpdate();
@@ -231,6 +239,7 @@ public abstract class AbstractChunkLoaderBlockEntity extends KineticBlockEntity 
         } else {
             if (!level.isClientSide()) {
                 addToManager();
+                updateTracking(true);
                 if (tickLoadingEnabled && ownerUUID != null && level instanceof ServerLevel serverLevel) {
                     int limit = CPLConfigs.server().maxTickLoadingLoadersPerPlayer.get();
                     if (limit >= 0 && !OwnershipHelper.isForceUnloaded(ownerUUID, serverLevel.getServer())) {
@@ -384,8 +393,10 @@ public abstract class AbstractChunkLoaderBlockEntity extends KineticBlockEntity 
     public void destroy() {
         super.destroy();
         boolean server = (!level.isClientSide || isVirtual()) && (level instanceof ServerLevel);
-        if (server)
+        if (server) {
+            updateTracking(false);
             unforceAllChunks(level.getServer(), getBlockPos(), forcedChunks);
+        }
         updateAttachedStation(null);
         removeFromManager();
     }
@@ -463,9 +474,11 @@ public abstract class AbstractChunkLoaderBlockEntity extends KineticBlockEntity 
         UUID candidate = OwnershipHelper.findTransferCandidate(ownerUUID, coOwners, server);
         if (candidate == null) return;
 
+        updateTracking(false);
         UUID previousOwner = ownerUUID;
         ownerUUID = candidate;
         coOwners.remove(candidate);
+        updateTracking(true);
         suppressionNotified = false; // reset so new owner gets a clean slate
 
         setChanged();
@@ -500,20 +513,71 @@ public abstract class AbstractChunkLoaderBlockEntity extends KineticBlockEntity 
         level.addParticle(ParticleTypes.PORTAL, v2.x, v2.y, v2.z, motion.x, motion.y, motion.z);
     }
 
+    private void updateTracking(boolean add) {
+        MinecraftServer server = level != null ? level.getServer() : null;
+        if (server == null || !(level instanceof ServerLevel serverLevel)) return;
+        PlayerActivityTracker tracker = PlayerActivityTracker.getOrCreate(server);
+        ResourceLocation dim = serverLevel.dimension().location();
+        BlockPos pos = getBlockPos();
+        if (ownerUUID != null) {
+            if (add) tracker.trackLoader(ownerUUID, dim, pos);
+            else tracker.untrackLoader(ownerUUID, dim, pos);
+        }
+        for (UUID coOwner : coOwners) {
+            if (add) tracker.trackLoader(coOwner, dim, pos);
+            else tracker.untrackLoader(coOwner, dim, pos);
+        }
+    }
+
     public static int forceUpdateLoadersFor(UUID owner, MinecraftServer server) {
         int count = 0;
+        Set<BlockPos> updatedPositions = new HashSet<>();
+        PlayerActivityTracker tracker = PlayerActivityTracker.getOrCreate(server);
+
+        for (PlayerActivityTracker.GlobalLoaderPos pos : tracker.getTrackedLoaders(owner)) {
+            ServerLevel targetLevel = server.getLevel(ResourceKey.create(Registries.DIMENSION, pos.dimension()));
+            if (targetLevel == null) {
+                tracker.untrackLoader(owner, pos.dimension(), pos.pos());
+                continue;
+            }
+            targetLevel.getChunk(pos.pos());
+            BlockEntity be = targetLevel.getBlockEntity(pos.pos());
+            if (!(be instanceof AbstractChunkLoaderBlockEntity cpl)) {
+                tracker.untrackLoader(owner, pos.dimension(), pos.pos());
+                continue;
+            }
+            if (!cpl.isAuthorizedUser(owner)) {
+                tracker.untrackLoader(owner, pos.dimension(), pos.pos());
+                continue;
+            }
+            cpl.chunkUpdateCooldown = 0;
+            if (!cpl.canLoadChunks()) {
+                cpl.chunkUnloadCooldown = CPLConfigs.server().getFor(cpl.type).unloadGracePeriod.get();
+            } else {
+                cpl.chunkUnloadCooldown = 0;
+            }
+            cpl.updateForcedChunks();
+            cpl.setChanged();
+            cpl.notifyUpdate();
+            updatedPositions.add(pos.pos());
+            count++;
+        }
+
         for (WeakCollection<ChunkLoader> collection : ChunkLoadManager.allLoaders.values()) {
             for (ChunkLoader loader : collection) {
                 if (loader instanceof AbstractChunkLoaderBlockEntity be) {
-                    if (owner.equals(be.getOwnerUUID())) {
+                    if (be.isAuthorizedUser(owner) && !updatedPositions.contains(be.getBlockPos())) {
                         if (be.getLevel() == null || be.getLevel().isClientSide()) continue;
                         be.chunkUpdateCooldown = 0;
                         if (!be.canLoadChunks()) {
                             be.chunkUnloadCooldown = CPLConfigs.server().getFor(be.type).unloadGracePeriod.get();
+                        } else {
+                            be.chunkUnloadCooldown = 0;
                         }
                         be.updateForcedChunks();
                         be.setChanged();
                         be.notifyUpdate();
+                        updatedPositions.add(be.getBlockPos());
                         count++;
                     }
                 }

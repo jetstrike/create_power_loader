@@ -1,5 +1,6 @@
 package com.hlysine.create_power_loader.command;
 
+import com.hlysine.create_power_loader.content.AbstractChunkLoaderBlockEntity;
 import com.hlysine.create_power_loader.content.ownership.OwnershipHelper;
 import com.hlysine.create_power_loader.content.ownership.PlayerActivityTracker;
 import com.mojang.brigadier.builder.ArgumentBuilder;
@@ -57,6 +58,7 @@ public class BypassCommand {
             return;
         }
         tracker.addBypass(uuid);
+        AbstractChunkLoaderBlockEntity.forceUpdateLoadersFor(uuid, source.getServer());
         source.sendSuccess(() -> Component.literal("[PowerLoader] Added " + name + " to the inactivity bypass list.")
                 .withStyle(net.minecraft.ChatFormatting.GREEN), true);
     }
@@ -68,6 +70,7 @@ public class BypassCommand {
             return;
         }
         tracker.removeBypass(uuid);
+        AbstractChunkLoaderBlockEntity.forceUpdateLoadersFor(uuid, source.getServer());
         source.sendSuccess(() -> Component.literal("[PowerLoader] Removed " + name + " from the inactivity bypass list.")
                 .withStyle(net.minecraft.ChatFormatting.YELLOW), true);
     }
