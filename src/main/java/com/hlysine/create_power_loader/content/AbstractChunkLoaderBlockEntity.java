@@ -282,27 +282,13 @@ public abstract class AbstractChunkLoaderBlockEntity extends KineticBlockEntity 
 
         if (server && chunkUpdateCooldown-- <= 0) {
             chunkUpdateCooldown = CPLConfigs.server().getFor(type).chunkUpdateInterval.get();
-            if (needsUpdate()) {
-                // Detect suppression state transitions and notify OPs
-                if (level.getServer() != null && ownerUUID != null) {
-                    boolean inactive = !OwnershipHelper.hasActiveAuthorizedPlayer(ownerUUID, coOwners, level.getServer());
-                    boolean forced = OwnershipHelper.isForceUnloaded(ownerUUID, level.getServer());
-                    boolean nowSuppressed = inactive || forced;
-                    if (nowSuppressed && !suppressedByInactivity) {
-                        suppressedByInactivity = true;
-                        if (!suppressionNotified && inactive && !forced) {
-                            suppressionNotified = true;
-                            OwnershipHelper.notifyOpsOfSuppression(ownerUUID, 1, level.getServer());
-                        }
-                        notifyUpdate();
-                    } else if (!nowSuppressed && suppressedByInactivity) {
-                        suppressedByInactivity = false;
-                        suppressionNotified = false;
-                        notifyUpdate();
-                    }
-                }
+            boolean suppressionChanged = updateSuppressionState(level.getServer());
+            if (needsUpdate() || suppressionChanged) {
                 setChanged();
                 updateForcedChunks();
+                if (suppressionChanged) {
+                    notifyUpdate();
+                }
             }
         }
 
@@ -330,6 +316,26 @@ public abstract class AbstractChunkLoaderBlockEntity extends KineticBlockEntity 
                 notifyUpdate();
             }
         }
+    }
+
+    public boolean updateSuppressionState(MinecraftServer server) {
+        if (server == null || ownerUUID == null) return false;
+        boolean inactive = !OwnershipHelper.hasActiveAuthorizedPlayer(ownerUUID, coOwners, server);
+        boolean forced = OwnershipHelper.isForceUnloaded(ownerUUID, server);
+        boolean nowSuppressed = inactive || forced;
+        if (nowSuppressed != suppressedByInactivity) {
+            suppressedByInactivity = nowSuppressed;
+            if (nowSuppressed) {
+                if (!suppressionNotified && inactive && !forced) {
+                    suppressionNotified = true;
+                    OwnershipHelper.notifyOpsOfSuppression(ownerUUID, 1, server);
+                }
+            } else {
+                suppressionNotified = false;
+            }
+            return true;
+        }
+        return false;
     }
 
     private boolean needsUpdate() {
@@ -551,6 +557,7 @@ public abstract class AbstractChunkLoaderBlockEntity extends KineticBlockEntity 
                 continue;
             }
             cpl.chunkUpdateCooldown = 0;
+            cpl.updateSuppressionState(server);
             if (!cpl.canLoadChunks()) {
                 cpl.chunkUnloadCooldown = CPLConfigs.server().getFor(cpl.type).unloadGracePeriod.get();
             } else {
@@ -569,6 +576,7 @@ public abstract class AbstractChunkLoaderBlockEntity extends KineticBlockEntity 
                     if (be.isAuthorizedUser(owner) && !updatedPositions.contains(be.getBlockPos())) {
                         if (be.getLevel() == null || be.getLevel().isClientSide()) continue;
                         be.chunkUpdateCooldown = 0;
+                        be.updateSuppressionState(server);
                         if (!be.canLoadChunks()) {
                             be.chunkUnloadCooldown = CPLConfigs.server().getFor(be.type).unloadGracePeriod.get();
                         } else {
